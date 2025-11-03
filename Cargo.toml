@@ -1,0 +1,20 @@
+[package]
+name = "why-rs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# 🌳 Core & IO
+petgraph = "0.8"  # For graph (DAG) representation
+polars = { version = "0.51", features = ["lazy", "csv", "ndarray"] } # For data (Arrow)
+
+# 🔬 Stats
+statrs = "0.18"  # For p-values (Normal distribution, etc.)
+ndarray = "0.17"  # For matrix math (covariance)
+ndarray-stats = "0.6" # For covariance matrix calculation
+
+# ⚙️ SCM
+rand = "0.9"      # For generating noise
+
+# 🧰 Utilities
+thiserror = "2.0" # For clean error handling
