@@ -3,7 +3,6 @@
 pub mod core;
 pub mod io;
 pub mod stats;
-pub mod scm;
 pub mod discovery;
 pub mod error;
 
@@ -12,6 +11,5 @@ pub mod error;
 // e.g., `use causal_rs::CausalGraph` instead of `use causal_rs::core::CausalGraph`
 pub use core::CausalGraph;
 pub use io::load_csv;
-pub use scm::StructuralCausalModel;
 pub use discovery::pc_algorithm; // Assuming the fn is `pc_algorithm`
 pub use error::CausalError;
