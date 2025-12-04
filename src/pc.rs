@@ -2,6 +2,9 @@ use crate::dag::{Variable, DAG};
 use polars::prelude::*;
 
 pub fn PC(df: DataFrame) -> DAG {
+
+    //TODO: write based on causal-learn's implementation: https://github.com/py-why/causal-learn/blob/main/causallearn/search/ConstraintBased/PC.py
+
     let cols: Vec<String> = df.get_column_names()
         .into_iter()
         .map(|s| s.to_string())
