@@ -1,6 +1,8 @@
+use std::fmt;
 use std::ops::{Deref, DerefMut};
 use petgraph::Direction;
 use petgraph::graph::DiGraph;
+use petgraph::visit::EdgeRef;
 
 pub type Variable = String;
 
@@ -64,5 +66,25 @@ impl DAG {
     pub fn add_node<S: Into<String>>(&mut self, name: S) {
         let s = name.into();
         self.graph.add_node(s);
+    }
+}
+
+impl fmt::Display for DAG {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "DAG {{")?;
+
+        for node_idx in self.graph.node_indices() {
+            let name = &self.graph[node_idx];
+            write!(f, "  {} -> ", name)?;
+
+            let neighbors: Vec<_> = self.graph
+                .edges(node_idx)
+                .map(|e| self.graph[e.target()].clone())
+                .collect();
+
+            writeln!(f, "{:?}", neighbors)?;
+        }
+
+        writeln!(f, "}}")
     }
 }

@@ -1,5 +1,5 @@
 #[macro_export]
-macro_rules! fcm {
+macro_rules! dag {
     // Match "A" => "B" patterns separated by commas
     ( $( $from:expr => $to:expr ),* ) => {
         {
