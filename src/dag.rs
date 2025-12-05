@@ -9,7 +9,7 @@ use polars::prelude::GroupByMethod::Var;
 
 pub type Variable = String;
 
-pub type Value = u32;
+pub type Value = f64;
 pub struct DAG {
     pub graph: DiGraph<Variable, ()>
 }
@@ -88,7 +88,7 @@ impl DAG {
             Err(_) => panic!("Graph contains a cycle! Cannot sort."),
         }
     }
-    
+
 }
 
 impl fmt::Display for DAG {

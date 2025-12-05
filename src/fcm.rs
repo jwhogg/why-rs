@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use petgraph::graph::DiGraph;
 use polars::frame::DataFrame;
+use polars::prelude::{Column, NamedFrom, PlSmallStr, Series};
 pub use crate::dag::{DAG, Variable, Value};
 use rand::Rng;
 
@@ -71,58 +72,75 @@ impl FCM {
     }
 
 
-    pub fn sample(&self) -> DataFrame {
-        // FUNCTION Sample_FCM(FCM, N):
-        //
-        // # 1. Determine Calculation Order
-        // # We must compute parents before children.
-        // # A Topological Sort linearizes the DAG (e.g., X -> Z -> Y becomes [X, Z, Y])
-        // Order = TopologicalSort(FCM.Graph)
-        //
-
+    pub fn sample(&mut self, n_samples: usize) -> DataFrame {
+        // 1. Determine Calculation Order
         let ordered = self.graph.sort();
-        let mut df = DataFrame::new(vec![]).unwrap();
 
-        for node in ordered.iter() {
+        // 2. Initialize Empty Dataset
+        // We use a HashMap to hold vectors of values (columns)
+        let mut data_store: HashMap<Variable, Vec<Value>> = HashMap::new();
 
+        // Initialize vectors for every node to avoid unwrap errors later
+        for node in self.graph.variables() {
+            data_store.insert(node, Vec::with_capacity(n_samples));
         }
 
-        df
-        // # 2. Initialize Empty Dataset
-        // # Structure to hold columns of data
-        // Data = NewDictionary()
-        //
-        // # 3. Iterate through nodes in causal order
-        // for each Node X in Order:
-        //
-        // # A. Sample Noise/Exogenous variables
-        // # Generate a vector of size N from the specific distribution for X
-        // # e.g., Normal(0,1), Uniform, etc.
-        //     U_x = Sample(FCM.NoiseDistributions[X], size=N)
-        //
-        // # B. Gather Parent Data
-        // # Retrieve the data columns for X's parents that we already computed
-        // # (Because of topological sort, parents are guaranteed to be in Data)
-        // Parents = FCM.Graph.GetParents(X)
-        // Parent_Data = [Data[P] for P in Parents]
-        //
-        // # C. Apply the Structural Equation
-        // # X = f(Parents, Noise)
-        // # This applies the function element-wise across the vectors
-        // X_values = FCM.Functions[X](Parent_Data, U_x)
-        //
-        // # D. Store result
-        // Data[X] = X_values
-        //
-        // # 4. Return as DataFrame/Table
-        // return DataFrame(Data)
+        // 3. Iterate to generate N samples (Rows)
+        for _ in 0..n_samples {
+
+            // Iterate through nodes in causal order (Columns)
+            for node in &ordered {
+
+                // # A. Gather Parent Data
+                // Get parents from the graph
+                let mut parents = self.graph.get_parents(node);
+
+                // CRITICAL: Sort parents alphabetically so they match
+                // the order expected by your multivariate_linear function
+                parents.sort();
+
+                // Retrieve the values for these parents for the CURRENT row.
+                // We use .last() because we are currently building this row.
+                let parent_values: Vec<Value> = parents.iter()
+                    .map(|p_name| {
+                        *data_store.get(p_name)
+                            .expect("Parent column missing")
+                            .last()
+                            .expect("Parent value missing for this row")
+                    })
+                    .collect();
+
+                // # B. Apply the Structural Equation
+                // Fetch the mutable function (mechanism)
+                let new_value = if let Some(mechanism) = self.get_mechanism(node) {
+                    // Execute the function with the parent values
+                    // (Noise is generated INSIDE this mechanism)
+                    mechanism(&parent_values)
+                } else {
+                    // Fallback if no rule is defined (e.g., default to 0)
+                    0 as Value
+                };
+
+                // # C. Store result
+                data_store.get_mut(node).unwrap().push(new_value);
+            }
+        }
+
+        // 4. Return as DataFrame
+        // Convert HashMap<String, Vec<u32>> into Vec<Series>
+        let columns: Vec<Column> = data_store
+            .into_iter()
+            .map(|(name, values)| Series::new(PlSmallStr::from(&name), values).into())
+            .collect();
+
+        DataFrame::new(columns).expect("Failed to create DataFrame")
     }
 }
 
 // ----- Mechanisms: ---------------
-pub fn multivariate_linear(weights: Vec<u32>, bias: u32, noise: u32) -> impl FnMut(&[Value]) -> Value {
+pub fn multivariate_linear(weights: Vec<f64>, bias: u32, noise: u32) -> impl FnMut(&[Value]) -> Value {
     move |parents: &[Value]| {
-        let mut total = bias;
+        let mut total = bias as f64;
 
         // Iterate over parents and weights simultaneously
         // .zip() stops at the shortest list, preventing index out of bounds
@@ -132,7 +150,7 @@ pub fn multivariate_linear(weights: Vec<u32>, bias: u32, noise: u32) -> impl FnM
 
         // Add Noise (e.g., random 0-5)
         // let noise = rand::thread_rng().gen_range(0..5);
-        total + noise
+        total + noise as f64
     }
 }
 
