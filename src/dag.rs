@@ -3,6 +3,9 @@ use std::ops::{Deref, DerefMut};
 use petgraph::Direction;
 use petgraph::graph::DiGraph;
 use petgraph::visit::EdgeRef;
+use petgraph::algo::toposort;
+use polars::prelude::DataFrame;
+use polars::prelude::GroupByMethod::Var;
 
 pub type Variable = String;
 
@@ -30,13 +33,13 @@ impl DAG {
         DAG { graph: DiGraph::<Variable, ()>::new()}
     }
 
-    pub fn get_index(&self, variable: Variable) -> Option<petgraph::graph::NodeIndex> {
+    pub fn get_index(&self, variable: &Variable) -> Option<petgraph::graph::NodeIndex> {
         self.graph.node_indices().find(|&node| {
-            self.graph[node].eq(&variable)
+            self.graph[node].eq(variable)
         })
     }
 
-    pub fn get_parents(&self, node: Variable) -> Vec<Variable> {
+    pub fn get_parents(&self, node: &Variable) -> Vec<Variable> {
         let node_index = self.get_index(node).expect("Node not found");
         self.graph.neighbors_directed(node_index, Direction::Incoming)
             .map(|neighbor_index| {
@@ -49,7 +52,7 @@ impl DAG {
 
     pub fn node(mut self, name: &str) -> Self {
         // Only add if it doesn't exist to prevent duplicates
-        if self.get_index(name.to_string()).is_none() {
+        if self.get_index(&Variable::from(name)).is_none() {
             self.graph.add_node(name.to_string());
         }
         self
@@ -57,8 +60,8 @@ impl DAG {
 
     // Handles index lookup internally
     pub fn edge(mut self, from: &str, to: &str) -> Self {
-        let from_idx = self.get_index(from.to_string()).expect("Node not found");
-        let to_idx = self.get_index(to.to_string()).expect("Node not found");
+        let from_idx = self.get_index(&from.to_string()).expect("Node not found");
+        let to_idx = self.get_index(&to.to_string()).expect("Node not found");
         self.graph.add_edge(from_idx, to_idx, ());
         self
     }
@@ -67,6 +70,25 @@ impl DAG {
         let s = name.into();
         self.graph.add_node(s);
     }
+
+    pub fn variables(&self) -> Vec<Variable> {
+        self.graph.node_indices().map(|node| self.graph[node].clone()).collect()
+    }
+
+    //returns a sorted list of variables in topological order, with root node first
+    pub fn sort(&self) -> Vec<Variable> {
+        // toposort returns a Result (Ok if sorted, Err if cycle detected)
+        match toposort(&self.graph, None) {
+            Ok(indices) => {
+                // Map the NodeIndices back to your Variable structs
+                indices.into_iter()
+                    .map(|node_index| self.graph[node_index].clone())
+                    .collect()
+            },
+            Err(_) => panic!("Graph contains a cycle! Cannot sort."),
+        }
+    }
+    
 }
 
 impl fmt::Display for DAG {

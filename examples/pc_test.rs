@@ -1,16 +1,10 @@
 use why_rs::pc::PC;
 use why_rs::dag::DAG;
-use why_rs::{dag, macros};
+use why_rs::{dag};
 use rand::Rng;
 use polars::prelude::*;
 
 fn main() {
-    let dag: DAG = dag!(
-            "A" => "B",
-            "B" => "C",
-            "A" => "C"
-        );
-
     let mut rng = rand::thread_rng();
     let n = 10;
 

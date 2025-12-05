@@ -23,8 +23,8 @@ pub fn PC(df: DataFrame) -> DAG {
     for var1 in &cols {
         for var2 in &cols {
             if var1 != var2 {
-                let var1_index = dag.get_index(Variable::from(var1)).unwrap();
-                let var2_index = dag.get_index(Variable::from(var2)).unwrap();
+                let var1_index = dag.get_index(&Variable::from(var1)).unwrap();
+                let var2_index = dag.get_index(&Variable::from(var2)).unwrap();
                 dag.add_edge(
                     var1_index,
                     var2_index,
