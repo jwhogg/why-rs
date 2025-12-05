@@ -23,6 +23,4 @@ fn main() {
     println!("Input: A=10, B=20");
     println!("Calculation: (10 * 0.2) + (20 * 0.5) + bias(2) + noise({})", noise_c);
     println!("Output: {}", result);
-
-
 }

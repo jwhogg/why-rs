@@ -136,4 +136,17 @@ pub fn multivariate_linear(weights: Vec<u32>, bias: u32, noise: u32) -> impl FnM
     }
 }
 
+pub fn empirical_root(history: Vec<Value>) -> impl FnMut(&[Value]) -> Value { //randomly choose a value from the history of values for that variable
+    // Safety check
+    if history.is_empty() {
+        panic!("Cannot create an empirical root with empty data!");
+    }
+
+    move |_parents| {
+        let mut rng = rand::thread_rng();
+        let index = rng.gen_range(0..history.len());
+        history[index]
+    }
+}
+
 // ----------------------------------
