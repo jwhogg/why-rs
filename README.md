@@ -1,6 +1,8 @@
 # 🧩🦀 why-rs: A Causal Inference library for Rust 
 ![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/jwhogg/why-rs?label=version)
 [![CI](https://github.com/jwhogg/why-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/jwhogg/why-rs/actions/workflows/rust.yml)
+[![crates.io](https://img.shields.io/crates/v/why_rs.svg)](https://crates.io/crates/why_rs)
+[![License: MIT OR Apache‑2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](./LICENSE)
 
 ### Usage
 
