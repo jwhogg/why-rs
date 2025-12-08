@@ -2,6 +2,12 @@
 name = "why_rs"
 version = "0.1.0"
 edition = "2024"
+description = "A Causal Inference library for Rust."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/jwhogg/why-rs"
+readme = "README.md"
+keywords = ["rust", "Causal_Inference", "Causal_Discovery"]
+categories = ["algorithms","mathematics","data-structures"]
 
 [dependencies]
 petgraph = "0.8"
