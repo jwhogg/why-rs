@@ -1,26 +1,30 @@
 use why_rs::pc::PC;
-use why_rs::dag::DAG;
+use why_rs::dag::{Value, DAG};
 use why_rs::{dag};
 use rand::Rng;
 use polars::prelude::*;
+use why_rs::fcm::{empirical_root, multivariate_linear, FCM};
 
 fn main() {
-    let mut rng = rand::thread_rng();
-    let n = 10;
+    let dag: DAG = dag!(
+            "A" => "C",
+            "B" => "C",
+            "C" => "D"
+        );
 
-    let col_a: Vec<i32> = (0..n).map(|_| rng.gen_range(0..100)).collect();
-    let col_b: Vec<i32> = (0..n).map(|_| rng.gen_range(0..100)).collect();
-    let col_c: Vec<i32> = (0..n).map(|_| rng.gen_range(0..100)).collect();
+    let mut fcm = FCM::from_dag(dag);
 
+    let noise_c = rand::thread_rng().gen_range(0..5);
+    let noise_d = rand::thread_rng().gen_range(0..5);
+    fcm = fcm.rule("A", empirical_root(vec![1, 2, 1, 2, 2, 1].into_iter().map(|x| x as Value).collect()));
+    fcm = fcm.rule("B", empirical_root(vec![0,1,0,0,1,1,1,0].into_iter().map(|x| x as Value).collect()));
+    fcm = fcm.rule("C", multivariate_linear(vec![0.33, 0.5], 3, noise_c));
+    fcm = fcm.rule("D", multivariate_linear(vec![0.8], 1, noise_d));
 
+    let df = fcm.sample(200);
+    println!("df: {}", df);
 
-    let df = df![
-        "a" => col_a,
-        "b" => col_b,
-        "c" => col_c
-    ].unwrap();
-
-    println!("{:?}", df);
-    let pc_dag = PC(df);
-    println!("{}", pc_dag);
+    let mut pc = PC::new(vec!["A".to_string(),"B".to_string(),"C".to_string(),"D".to_string()], df);
+    pc.run(0.05);
+    println!("{}", pc.graph);
 }
