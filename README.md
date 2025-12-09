@@ -22,6 +22,7 @@ my_crate = { git = "https://github.com/jwhogg/why-rs.git" }
 ### Running examples
 Currently, there is support for the DAG and FCM (Functional Causal Model) data types.
 The following functionality is supported:
+- Parsing a .dot file
 - Sampling from an FCM
 - Causal Discovery with the PC algorithm
 
