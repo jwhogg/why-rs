@@ -10,6 +10,7 @@ keywords = ["rust", "Causal_Inference", "Causal_Discovery"]
 categories = ["algorithms","mathematics","data-structures"]
 
 [dependencies]
-petgraph = "0.8"
+petgraph = { version = "0.8", features = ["dot_parser"] }
 polars = "0.52.0"
 rand = "0.8"
+dot-parser = "0.6"

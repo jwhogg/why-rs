@@ -1,9 +1,12 @@
-use std::fmt;
+use std::{fmt, fs};
 use std::ops::{Deref, DerefMut};
 use petgraph::Direction;
 use petgraph::graph::DiGraph;
 use petgraph::visit::EdgeRef;
 use petgraph::algo::toposort;
+use dot_parser::*;
+use petgraph::dot::dot_parser::ParseFromDot;
+use petgraph::dot::dot_parser::DotParsingError;
 use polars::prelude::DataFrame;
 use polars::prelude::GroupByMethod::Var;
 
@@ -31,6 +34,35 @@ impl DerefMut for DAG {
 impl DAG {
     pub fn new() -> DAG {
         DAG { graph: DiGraph::<Variable, ()>::new()}
+    }
+
+    pub fn from_dot(path: &str) -> Result<DAG, DotParsingError> {
+        let string_graph = fs::read_to_string(path).unwrap();
+        return match <petgraph::Graph<_, _, _, _> as ParseFromDot>::try_from(&string_graph) {
+            Ok(graph) => {
+                let dgraph: DiGraph<Variable, ()> = graph.map(
+                    // 1. Node Conversion Closure
+                    |_, node_weight| {
+                        // node_weight is Type: DotNodeWeight (aka Node<(&str, &str)>)
+                        // You need to implement the logic to turn the dot data into your Variable struct.
+                        // For example, if Variable is built from the node ID:
+                        Variable::from(node_weight.id.clone())
+                    },
+                    // 2. Edge Conversion Closure
+                    |_, _edge_weight| {
+                        // edge_weight is Type: DotAttrList
+                        // We return () to satisfy the target type DiGraph<Variable, ()>
+                        ()
+                    });
+                Ok(DAG { graph: dgraph }) // let why_graph = DAG { graph: DiGraph::from(graph)}
+            },
+            Err(e) => {
+                Err(e)
+            }
+        }
+
+        // println!("{}", result);
+        // DAG::new()
     }
 
     pub fn get_index(&self, variable: &Variable) -> Option<petgraph::graph::NodeIndex> {

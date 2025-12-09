@@ -1,0 +1,10 @@
+digraph G {
+    A -> B -> C;
+    B -> D;
+    A -> D;
+    D -> E;
+    C -> E;
+    
+    A [label="Start"];
+    E [label="End"];
+}
