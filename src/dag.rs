@@ -31,6 +31,8 @@ impl DerefMut for DAG {
     }
 }
 
+
+
 impl DAG {
     pub fn new() -> DAG {
         DAG { graph: DiGraph::<Variable, ()>::new()}

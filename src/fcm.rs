@@ -5,6 +5,8 @@ use polars::frame::DataFrame;
 use polars::prelude::{Column, NamedFrom, PlSmallStr, Series};
 pub use crate::dag::{DAG, Variable, Value};
 use rand::Rng;
+use crate::intervention::Intervention;
+use petgraph::algo::toposort;
 
 pub struct FCM {
     pub graph: DAG,
@@ -70,7 +72,75 @@ impl FCM {
     pub fn get_mechanism(&mut self, variable: &Variable) -> Option<&mut Box<dyn FnMut(&[Value]) -> Value>> {
         self.functions.get_mut(variable)
     }
+    pub fn generate(&mut self, variable: &Variable, parent_data: &Vec<Value>) -> Value {
+        let mechanism = self.get_mechanism(variable).unwrap();
+        mechanism(parent_data)
+    }
 
+    pub fn interventional_samples(
+        &mut self,
+        interventions: Vec<Intervention>,
+        n_samples: usize
+    ) -> DataFrame {
+
+        // 0. Pre-process interventions
+        let intervention_map: HashMap<Variable, Value> = interventions
+            .into_iter()
+            .map(|i| (i.variable, i.value))
+            .collect();
+
+        // 1. Determine Calculation Order
+        let ordered = self.graph.sort();
+
+        // 2. Initialize Empty Dataset
+        let mut data_store: HashMap<Variable, Vec<Value>> = HashMap::new();
+        for node in self.graph.variables() {
+            data_store.insert(node.clone(), Vec::with_capacity(n_samples));
+        }
+
+        // 3. Loop: Generate N samples
+        for _ in 0..n_samples {
+            for node in &ordered {
+                // Check for Intervention
+                if let Some(forced_value) = intervention_map.get(node) {
+                    // "Graph Surgery": Force value, ignore parents
+                    data_store.get_mut(node).unwrap().push(forced_value.clone());
+                } else {
+                    // Standard Logic
+                    let mut parents = self.graph.get_parents(node);
+                    parents.sort();
+
+                    let parent_values: Vec<Value> = parents.iter()
+                        .map(|p_name| {
+                            data_store.get(p_name).unwrap().last().unwrap().clone()
+                        })
+                        .collect();
+
+                    let new_value = if let Some(mechanism) = self.get_mechanism(node) {
+                        mechanism(&parent_values)
+                    } else {
+                        0.0 // Fallback
+                    };
+
+                    data_store.get_mut(node).unwrap().push(new_value);
+                }
+            }
+        }
+
+        // 4. CONVERT TO DATAFRAME
+        let columns: Vec<Column> = data_store
+            .into_iter()
+            .map(|(var_name, values)| {
+                // Unwrap Vec<Value> into Vec<f64>
+                let raw_values: Vec<f64> = values.into_iter().map(|v| v).collect();
+
+                // Create Series and convert it to Column using .into()
+                Series::new(PlSmallStr::from(var_name), raw_values).into()
+            })
+            .collect();
+
+        DataFrame::new(columns).expect("Failed to create DataFrame")
+    }
 
     pub fn sample(&mut self, n_samples: usize) -> DataFrame {
         // 1. Determine Calculation Order
