@@ -8,8 +8,6 @@ use rand::Rng;
 use rand_distr::{Normal, Distribution};
 use crate::fcm::FCM;
 
-pub type Function = Box<dyn FnMut(&[Value]) -> Value>;
-
 pub trait Mechanism {
     fn predict(&self, inputs: Vec<Value>) -> Value;
     fn fit(&mut self, df: DataFrame, variable: Variable, fcm: &FCM); //needs to know which variable it is
@@ -71,7 +69,8 @@ impl LinearRegression {
         );
 
         let mut rng = rand::thread_rng();
-        let noise_dist = Normal::new(0.0, self.noise).unwrap();
+
+        let noise_dist = if self.noise > 0.0 {Normal::new(0.0, self.noise).unwrap()} else {Normal::new(0.0,1.0).unwrap()};
 
         let mut y = Array1::<f64>::zeros(x.nrows());
 
@@ -121,7 +120,11 @@ impl Mechanism for LinearRegression {
         let n_cols = df.width();
         let mut x_vec = Vec::with_capacity(n_rows * n_cols);
 
-        for col in df.get_columns() {
+
+        let mut cols = df.get_columns().to_vec();
+        cols.sort_by_key(|s| s.name().to_string());
+
+        for col in cols {
             match col.dtype() {
                 DataType::Float64 => x_vec.extend(col.f64().unwrap().into_no_null_iter()),
                 DataType::Float32 => x_vec.extend(col.f32().unwrap().into_no_null_iter().map(|v| v as f64)),
@@ -151,8 +154,8 @@ impl Mechanism for EmpiricalRoot {
         self.history[index]
     }
 
-    fn fit(&mut self, df: DataFrame, variable: Variable, fcm: &FCM) {
-        todo!()
+    fn fit(&mut self, _: DataFrame, _: Variable, _: &FCM) {
+        panic!("Empirical root does not need to be fit!");
         //don't need a fit method for empirical root
     }
 }
