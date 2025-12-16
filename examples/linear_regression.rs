@@ -1,8 +1,10 @@
+use std::env;
 use why_rs::fcm::FCM;
 use why_rs::dag::{Value, Variable, DAG};
 use why_rs::dag;
 use why_rs::mechanism::{EmpiricalRoot, LinearRegression};
 use polars::prelude::*;
+use why_rs::mechanism::Mechanism;
 use rand::Rng;
 
 fn generate_data(n: usize) -> DataFrame {
@@ -21,10 +23,10 @@ fn generate_data(n: usize) -> DataFrame {
         .collect();
 
     DataFrame::new(vec![
-        Series::new("A", a),
-        Series::new("B", b),
-        Series::new("C", c),
-        Series::new("D", d),
+        Column::from(Series::new(PlSmallStr::from("A"), a)),
+        Column::from(Series::new(PlSmallStr::from("B"), b)),
+        Column::from(Series::new(PlSmallStr::from("C"), c)),
+        Column::from(Series::new(PlSmallStr::from("D"), d)),
     ])
         .unwrap()
 }
@@ -44,7 +46,7 @@ fn main() {
     let mut fcm = FCM::from_dag(dag);
 
     // 4. Root mechanisms (empirical, NO .fit)
-    let a_history: Vec<Value> = df
+    let a_history: Vec<Value> = df //TODO: move this logic to the empirical root method
         .column("A").unwrap()
         .f64().unwrap()
         .into_no_null_iter()
@@ -62,10 +64,10 @@ fn main() {
 
     // 5. Learned mechanisms
     let mut c_lr = LinearRegression::new();
-    c_lr.fit(df.clone(), Variable::from("C"));
+    c_lr.fit(df.clone(), Variable::from("C"), &fcm);
 
     let mut d_lr = LinearRegression::new();
-    d_lr.fit(df.clone(), Variable::from("D"));
+    d_lr.fit(df.clone(), Variable::from("D"), &fcm);
 
     fcm = fcm
         .rule("C", c_lr)

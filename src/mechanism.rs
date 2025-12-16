@@ -6,12 +6,13 @@ use linfa_linear::{FittedLinearRegression, LinearRegression as LR};
 use ndarray::{Array1, Array2, Axis};
 use rand::Rng;
 use rand_distr::{Normal, Distribution};
+use crate::fcm::FCM;
 
 pub type Function = Box<dyn FnMut(&[Value]) -> Value>;
 
 pub trait Mechanism {
     fn predict(&self, inputs: Vec<Value>) -> Value;
-    fn fit(&mut self, df: DataFrame, variable: Variable); //needs to know which variable it is
+    fn fit(&mut self, df: DataFrame, variable: Variable, fcm: &FCM); //needs to know which variable it is
 }
 
 #[derive(Debug, Clone)]
@@ -43,7 +44,7 @@ impl LinearRegression {
         }
     }
 
-    pub fn fit(&mut self, x: Array2<f64>, y: &Array1<f64>) {
+    pub fn fit_ndarray(&mut self, x: Array2<f64>, y: &Array1<f64>) {
         let db = DatasetBase::new(x, y.to_owned());
         let model = LR::default().fit(&db).unwrap();//bad error handling
         self.weights = Some(model.params().clone());
@@ -96,7 +97,9 @@ impl Mechanism for LinearRegression {
         self.predict(&parents_as_2d)[0]
     }
 
-    fn fit(&mut self, mut df: DataFrame, variable: Variable) {
+    fn fit(&mut self, mut df: DataFrame, variable: Variable, fcm: &FCM) {
+        let parents = fcm.graph.get_parents(&variable);
+
         //find out which variable it is from the dataset
         let target_series: &Series = df.column(&variable)
                                 .expect("Error indexing variable name in provided df!")
@@ -111,7 +114,8 @@ impl Mechanism for LinearRegression {
         };
 
         df.drop_in_place(&variable).expect("Error indexing variable name to drop from provided df!");
-
+        //drop non-parents:
+        let df = df.select(parents).unwrap();
         //Convert df to 2D ndarray
         let n_rows = df.height();
         let n_cols = df.width();
@@ -128,7 +132,7 @@ impl Mechanism for LinearRegression {
         // Create Array2 in row-major order
         let x = Array2::from_shape_vec((n_rows, n_cols), x_vec).expect("Failed to create Array2");
 
-        self.fit(x, &y);
+        self.fit_ndarray(x, &y);
     }
 }
 
@@ -147,7 +151,8 @@ impl Mechanism for EmpiricalRoot {
         self.history[index]
     }
 
-    fn fit(&mut self, df: DataFrame, variable: Variable) {
+    fn fit(&mut self, df: DataFrame, variable: Variable, fcm: &FCM) {
         todo!()
+        //don't need a fit method for empirical root
     }
 }

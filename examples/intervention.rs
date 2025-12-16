@@ -9,9 +9,6 @@ use why_rs::intervene;
 use why_rs::intervention::Intervention;
 
 fn main() {
-    // let intervention = intervene!('A': 2, 'B': 0);
-    // println!("{:?}", intervention);
-
     let dag: DAG = dag!(
             "A" => "C",
             "B" => "C",
