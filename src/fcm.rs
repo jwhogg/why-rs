@@ -7,12 +7,13 @@ pub use crate::dag::{DAG, Variable, Value};
 use rand::Rng;
 use crate::intervention::Intervention;
 use petgraph::algo::toposort;
+use crate::mechanism::Mechanism;
 
 pub struct FCM {
     pub graph: DAG,
     // &[] means the function takes a slice args, so any length
     // Box is because we don't know func length at compile time, we move it to the heap
-    pub functions: HashMap<Variable, Box<dyn FnMut(&[Value]) -> Value>>,
+    pub mechanisms: HashMap<Variable, Box<dyn Mechanism>>,
 }
 
 impl Deref for FCM {
@@ -33,22 +34,19 @@ impl FCM {
     pub fn new() -> Self {
         FCM {
             graph: DAG::new(),
-            functions: HashMap::new(),
+            mechanisms: HashMap::new(),
         }
     }
 
     pub fn from_dag(graph: DAG) -> Self {
         FCM {
             graph,
-            functions: HashMap::new(),
+            mechanisms: HashMap::new(),
         }
     }
 
-    pub fn rule<F>(mut self, target: &str, func: F) -> Self
-    where
-        F: FnMut(&[Value]) -> Value + 'static,
-    {
-        self.functions.insert(target.to_string(), Box::new(func));
+    pub fn rule<M: Mechanism + 'static>(mut self, target: &str, mech: M) -> Self {
+        self.mechanisms.insert(Variable::from(target), Box::new(mech));
         self
     }
 
@@ -69,12 +67,13 @@ impl FCM {
         self
     }
 
-    pub fn get_mechanism(&mut self, variable: &Variable) -> Option<&mut Box<dyn FnMut(&[Value]) -> Value>> {
-        self.functions.get_mut(variable)
+    pub fn get_mechanism(&mut self, variable: &Variable) -> Option<&mut Box<dyn Mechanism>> {
+        self.mechanisms.get_mut(variable)
     }
-    pub fn generate(&mut self, variable: &Variable, parent_data: &Vec<Value>) -> Value {
-        let mechanism = self.get_mechanism(variable).unwrap();
-        mechanism(parent_data)
+    pub fn generate(&mut self, variable: &Variable, parent_data: &[Value]) -> Value {
+        let mechanism = self.get_mechanism(variable)
+            .expect("No mechanism defined for variable");
+        mechanism.predict(parent_data.to_vec())
     }
 
     pub fn interventional_samples(
@@ -117,7 +116,7 @@ impl FCM {
                         .collect();
 
                     let new_value = if let Some(mechanism) = self.get_mechanism(node) {
-                        mechanism(&parent_values)
+                        mechanism.predict(parent_values)
                     } else {
                         0.0 // Fallback
                     };
@@ -185,7 +184,7 @@ impl FCM {
                 let new_value = if let Some(mechanism) = self.get_mechanism(node) {
                     // Execute the function with the parent values
                     // (Noise is generated INSIDE this mechanism)
-                    mechanism(&parent_values)
+                    mechanism.predict(parent_values)
                 } else {
                     // Fallback if no rule is defined (e.g., default to 0)
                     0 as Value
@@ -206,35 +205,3 @@ impl FCM {
         DataFrame::new(columns).expect("Failed to create DataFrame")
     }
 }
-
-// ----- Mechanisms: ---------------
-pub fn multivariate_linear(weights: Vec<f64>, bias: u32, noise: u32) -> impl FnMut(&[Value]) -> Value {
-    move |parents: &[Value]| {
-        let mut total = bias as f64;
-
-        // Iterate over parents and weights simultaneously
-        // .zip() stops at the shortest list, preventing index out of bounds
-        for (parent_val, weight) in parents.iter().zip(weights.iter()) {
-            total += parent_val * weight;
-        }
-
-        // Add Noise (e.g., random 0-5)
-        // let noise = rand::thread_rng().gen_range(0..5);
-        total + noise as f64
-    }
-}
-
-pub fn empirical_root(history: Vec<Value>) -> impl FnMut(&[Value]) -> Value { //randomly choose a value from the history of values for that variable
-    // Safety check
-    if history.is_empty() {
-        panic!("Cannot create an empirical root with empty data!");
-    }
-
-    move |_parents| {
-        let mut rng = rand::thread_rng();
-        let index = rng.gen_range(0..history.len());
-        history[index]
-    }
-}
-
-// ----------------------------------
