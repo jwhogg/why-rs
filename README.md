@@ -9,7 +9,7 @@
 To use the crate, you can include it in your `cargo.toml`:
 ```rust
 [dependencies]
-why_rs = "0.2.0"
+why_rs = "0.2.1"
 ```
 
 Or, get the latest version directly from github:
