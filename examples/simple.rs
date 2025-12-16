@@ -5,8 +5,7 @@ fn main() {
     let mut model = FCM::new()
         .node("A")
         .node("B")
-        .edge("A", "B")
-        .rule("B", |pa: &[Value]| pa.iter().sum());
+        .edge("A", "B");
 
     println!("Graph ready: {} nodes.", model.graph.node_count());
 }

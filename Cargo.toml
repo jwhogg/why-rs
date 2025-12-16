@@ -14,3 +14,7 @@ petgraph = { version = "0.8", features = ["dot_parser"] }
 polars = "0.52.0"
 rand = "0.8"
 dot-parser = "0.6"
+linfa = "0.8"
+linfa-linear = "0.8"
+ndarray = "0.16"
+rand_distr = "0.4"
